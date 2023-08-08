@@ -70,6 +70,16 @@ def convert_numpy_to_mesh(obj_verts, obj_faces, color=None, compute_norm=True):
     return obj
 
 
+def convert_numpy_to_tetra(vertices, tetras):
+    """
+    vertices: nx3 array float
+    tetras: nx4 array int
+    return: obj, open3d tetra mesh
+    """
+    obj = o3d.geometry.TetraMesh()
+    obj.vertices = o3d.utility.Vector3dVector(vertices)
+    obj.tetras = o3d.utility.Vector4iVector(tetras)
+
 if __name__ == "__main__":
     cap = create_capsule()
     mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=3, origin=np.array([0, 0, 0]))
