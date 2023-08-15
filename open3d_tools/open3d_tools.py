@@ -45,15 +45,27 @@ def create_capsule(height=2.0, radius=1.0):
     return capsule
 
 
-def create_plane(points: np.array = np.array([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0]])):
+def create_plane(frame: str|np.ndarray, scale: float = 1.0):
     """
-    p0--------p1(y)
-    |          |
-    |          |
-    p3(x)------p2
+    p0----------p1
+    |            |
+    |     .----- |
+    |     |      |
+    |     |      |
+    p3----------p2
     """
+    if frame == "xy":
+        points = np.array([[-1, -1, 0], [-1, 1, 0], [1, 1, 0], [1, -1, 0]])
+    elif frame == "xz":
+        points = np.array([[-1, 0, -1], [1, 0, -1], [1, 0, 1], [-1, 0, 1]])
+    elif frame == "yz":
+        points = np.array([[0, -1, -1], [0, -1, 1], [0, 1, 1], [0, 1, -1]])
+    elif type(frame) is np.ndarray:
+        points = frame
+    else:
+        raise NotImplementedError
     faces = np.array([[0, 3, 1], [1, 3, 2]])
-    return convert_numpy_to_mesh(points, faces)
+    return convert_numpy_to_mesh(points * scale, faces)
 
 
 def convert_numpy_to_mesh(obj_verts, obj_faces, color=None, compute_norm=True):
