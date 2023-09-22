@@ -1,10 +1,130 @@
 import open3d as o3d
 import numpy as np
+import json
+import random
+import os
 
 
-def show_points(points: np.array):
-    pcd = numpy2o3d(points)
-    o3d.visualization.draw_geometries([pcd])
+dir_name = os.path.dirname(os.path.abspath(__file__))
+with open(f"{dir_name}/../config/m_colors.json") as json_file:
+    m_colors = json.load(json_file)
+
+
+def get_rgb_colors():
+    rgb_colors = {}
+    for key in m_colors.keys():
+        if isinstance(m_colors[key], str):
+            color = hex_to_rgb(m_colors[key])
+            rgb_colors[key] = color
+    return rgb_colors
+
+
+def hex_to_rgb(hex_value):
+    hex_value = hex_value.lstrip("#")
+    hex_len = len(hex_value)
+    return tuple(int(hex_value[i:i+hex_len//3], 16) / 255.0 for i in range(0, hex_len, hex_len//3))
+
+def show_points(points=None, points_colors=None, key_points=None, key_point_color=None, key_points_radius=0.01,
+                show_norm=False, frame_size=None, frame_position=np.array([0, 0, 0]),
+                show_obj_paths=None, paint_color=False, show_objs=None):
+    """
+    show points in open3d
+    Args:
+        points: numpy (n * 3)
+        points_colors: color points
+        key_points: show key points using primitive shape
+        key_point_color: color for keypoint
+        key_points_radius: radius of key points
+        show_norm: bool show norm or not
+        frame_size:
+        frame_position:
+        show_obj_paths: mesh obj paths list to show
+        paint_color: paint the mesh or not
+        show_objs: show objs list
+    Returns:
+        show the input pointcloud in a pop out window
+    """
+    geo_list = []
+    if points is not None:
+        if isinstance(points, np.ndarray):
+            pcd = o3d.geometry.PointCloud()
+            pcd.points = o3d.utility.Vector3dVector(points)
+        else:
+            # assume the input are o3d points format
+            pcd = points
+        if show_norm:
+            pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
+        if points_colors is not None:
+            pcd.colors = points_colors
+        geo_list.append(pcd)
+    if key_points is not None:
+        assert len(key_points.shape) == 2
+        assert key_points.shape[1] == 3
+        rgb_colors = get_rgb_colors()
+        rgb_colors = list(rgb_colors.values())
+        random.shuffle(rgb_colors)
+        if key_point_color is None:
+            key_point_color = rgb_colors[0]
+        for i, key_point in enumerate(key_points):
+            mesh_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=key_points_radius)
+            trans = np.eye(4)
+            trans[:3, 3] = key_point
+            mesh_sphere.transform(trans)
+            mesh_sphere.compute_vertex_normals()
+            mesh_sphere.paint_uniform_color(key_point_color)
+            geo_list.append(mesh_sphere)
+
+    if frame_size is not None:
+        mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=frame_size, origin=frame_position)
+        geo_list.append(mesh_frame)
+    if show_obj_paths is not None:
+        color_list = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+        for i, path in enumerate(show_obj_paths):
+            mesh_obj = o3d.io.read_triangle_mesh(path)
+            mesh_obj.compute_vertex_normals()
+            if paint_color:
+                mesh_obj.paint_uniform_color(color_list[i])
+            geo_list.append(mesh_obj)
+    if show_objs is not None:
+        for show_obj in show_objs:
+            geo_list.append(show_obj)
+    vis = o3d.visualization.Visualizer()
+    vis.create_window()
+    for geo in geo_list:
+        vis.add_geometry(geo)
+    vis.get_render_option().load_from_json(f"{dir_name}/../config/render_option.json")
+    vis.run()
+    vis.destroy_window()
+
+
+def show_rgb_points(xyz, rgb):
+    """Display point cloud provided from "xyz" with colors from "rgb".
+
+    Args:
+        rgb: RGB image
+        xyz: X, Y and Z images (point cloud co-ordinates)
+
+    Returns None
+
+    """
+    xyz = np.nan_to_num(xyz).reshape(-1, 3)
+    rgb = rgb.reshape(-1, 3)
+
+    point_cloud_open3d = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(xyz))
+    point_cloud_open3d.colors = o3d.utility.Vector3dVector(rgb / 255)
+
+    visualizer = o3d.visualization.Visualizer()  # pylint: disable=no-member
+    visualizer.create_window()
+    visualizer.add_geometry(point_cloud_open3d)
+
+    visualizer.get_render_option().background_color = (0, 0, 0)
+    visualizer.get_render_option().point_size = 1
+    visualizer.get_render_option().show_coordinate_frame = True
+    visualizer.get_view_control().set_front([0, 0, -1])
+    visualizer.get_view_control().set_up([0, -1, 0])
+
+    visualizer.run()
+    visualizer.destroy_window()
 
 
 def numpy2o3d(points: np.array) -> o3d.geometry.PointCloud:
@@ -91,6 +211,34 @@ def convert_numpy_to_tetra(vertices, tetras):
     obj = o3d.geometry.TetraMesh()
     obj.vertices = o3d.utility.Vector3dVector(vertices)
     obj.tetras = o3d.utility.Vector4iVector(tetras)
+
+
+def get_normal(points, radius=0.1, max_nn=30):
+    """
+    input: points is numpy array
+    """
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(points)
+    pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=radius, max_nn=max_nn))
+    pcd_norm = np.asarray(pcd.normals)
+    return pcd_norm
+
+
+def voxelize_points(points, voxel_size, return_numpy=True):
+    """
+    Down sample the point cloud with a voxel
+    """
+    if isinstance(points, np.ndarray):
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(points)
+    else:
+        # assume the input are o3d points format
+        pcd = points
+    pcd = pcd.voxel_down_sample(voxel_size=voxel_size)
+    if return_numpy:
+        pcd = np.asarray(pcd.points)
+    return pcd
+
 
 if __name__ == "__main__":
     cap = create_capsule()
