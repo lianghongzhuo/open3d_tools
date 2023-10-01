@@ -26,7 +26,7 @@ def hex_to_rgb(hex_value):
 
 def show_points(points=None, points_colors=None, key_points=None, key_point_color=None, key_points_radius=0.01,
                 show_norm=False, frame_size=None, frame_position=np.array([0, 0, 0]),
-                show_obj_paths=None, paint_color=False, show_objs=None):
+                show_obj_paths=None, paint_color=False, show_objs=None, mesh_scale=None):
     """
     show points in open3d
     Args:
@@ -81,6 +81,8 @@ def show_points(points=None, points_colors=None, key_points=None, key_point_colo
         color_list = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
         for i, path in enumerate(show_obj_paths):
             mesh_obj = o3d.io.read_triangle_mesh(path)
+            if mesh_scale is not None:
+                mesh_obj = convert_numpy_to_mesh(np.array(mesh_obj.vertices)*mesh_scale, np.array(mesh_obj.triangles))
             mesh_obj.compute_vertex_normals()
             if paint_color:
                 mesh_obj.paint_uniform_color(color_list[i])
