@@ -24,16 +24,17 @@ def hex_to_rgb(hex_value):
     hex_len = len(hex_value)
     return tuple(int(hex_value[i:i+hex_len//3], 16) / 255.0 for i in range(0, hex_len, hex_len//3))
 
-def show_points(points=None, points_colors=None, key_points=None, key_point_color=None, key_points_radius=0.01,
-                show_norm=False, frame_size=None, frame_position=np.array([0, 0, 0]),
-                show_obj_paths=None, paint_color=False, show_objs=None, mesh_scale=None):
+
+def show_points(points=None, points_color=None, key_points=None, key_points_color=None, key_points_colors=None,
+                key_points_radius=0.01, show_norm=False, frame_size=None, frame_position=np.array([0, 0, 0]),
+                show_obj_paths=None, paint_color=False, mesh_scale=None):
     """
     show points in open3d
     Args:
         points: numpy (n * 3)
-        points_colors: color points
+        points_color: uniform color of points
         key_points: show key points using primitive shape
-        key_point_color: color for keypoint
+        key_points_color: color for keypoint
         key_points_radius: radius of key points
         show_norm: bool show norm or not
         frame_size:
@@ -46,32 +47,30 @@ def show_points(points=None, points_colors=None, key_points=None, key_point_colo
     """
     geo_list = []
     if points is not None:
-        if isinstance(points, np.ndarray):
-            pcd = o3d.geometry.PointCloud()
-            pcd.points = o3d.utility.Vector3dVector(points)
-        else:
-            # assume the input are o3d points format
-            pcd = points
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(points)
         if show_norm:
             pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
-        if points_colors is not None:
-            pcd.colors = points_colors
+        if points_color is not None:
+            pcd.paint_uniform_color(points_color)
         geo_list.append(pcd)
     if key_points is not None:
         assert len(key_points.shape) == 2
         assert key_points.shape[1] == 3
-        rgb_colors = get_rgb_colors()
-        rgb_colors = list(rgb_colors.values())
+        rgb_colors = list(get_rgb_colors().values())
         random.shuffle(rgb_colors)
-        if key_point_color is None:
-            key_point_color = rgb_colors[0]
+        if key_points_colors is None:
+            if key_points_color is None:
+                key_points_color = rgb_colors[0]
+            key_points_colors = [key_points_color] * len(key_points)
+
         for i, key_point in enumerate(key_points):
             mesh_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=key_points_radius)
             trans = np.eye(4)
             trans[:3, 3] = key_point
             mesh_sphere.transform(trans)
             mesh_sphere.compute_vertex_normals()
-            mesh_sphere.paint_uniform_color(key_point_color)
+            mesh_sphere.paint_uniform_color(key_points_colors[i])
             geo_list.append(mesh_sphere)
 
     if frame_size is not None:
@@ -87,9 +86,10 @@ def show_points(points=None, points_colors=None, key_points=None, key_point_colo
             if paint_color:
                 mesh_obj.paint_uniform_color(color_list[i])
             geo_list.append(mesh_obj)
-    if show_objs is not None:
-        for show_obj in show_objs:
-            geo_list.append(show_obj)
+    return geo_list
+
+
+def open3d_show(geo_list):
     vis = o3d.visualization.Visualizer()
     vis.create_window()
     for geo in geo_list:
