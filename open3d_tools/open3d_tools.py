@@ -1,7 +1,7 @@
 import open3d as o3d
 import numpy as np
 import random
-from utils import get_rgb_colors
+from utils import dir_name, get_rgb_colors
 
 
 def show_points(points=None, points_color=None, key_points=None, key_points_color=None, key_points_colors=None,
@@ -73,7 +73,7 @@ def open3d_show(geo_list):
     vis.create_window()
     for geo in geo_list:
         vis.add_geometry(geo)
-    vis.get_render_option().load_from_json("./config/render_option.json")
+    vis.get_render_option().load_from_json(f"{dir_name}/config/render_option.json")
     vis.run()
     vis.destroy_window()
 
