@@ -6,9 +6,10 @@
 # Date       : 07/11/2018: 10:27 AM
 # File Name  : setup.py
 
-from setuptools import setup, find_packages
+from setuptools import setup
 
 __version__ = "0.0.2"
+
 setup(
     name="open3d_tools",
     version=__version__,
@@ -17,7 +18,8 @@ setup(
     url="https://github.com/lianghongzhuo/open3d_tools",
     author="Hongzhuo Liang",
     author_email="liang@informatik.uni-hamburg.de",
-    packages=find_packages(),
+    packages=["open3d_tools"],
+    package_data={"open3d_tools": ["config/*"]},
     include_package_data=True,
     platforms="any",
     install_requires=["numpy"]

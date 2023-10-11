@@ -1,8 +1,7 @@
 import os
 import json
 
-dir_name = os.path.dirname(os.path.abspath(__file__))
-with open(f"{dir_name}/../config/m_colors.json") as json_file:
+with open("./config/m_colors.json") as json_file:
     m_colors = json.load(json_file)
 
 
