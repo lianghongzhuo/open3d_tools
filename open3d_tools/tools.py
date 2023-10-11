@@ -1,7 +1,7 @@
 import open3d as o3d
 import numpy as np
 import random
-from utils import dir_name, get_rgb_colors
+from .utils import dir_name, get_rgb_colors
 
 
 def show_points(points=None, points_color=None, key_points=None, key_points_color=None, key_points_colors=None,
